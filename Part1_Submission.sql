@@ -777,6 +777,200 @@ REFRESH MATERIALIZED VIEW public.instructor_reservation_mv;
 --
 -- PostgreSQL database dump complete
 --
+SECTION 3.1: DATA MANIPULATION LANGUAGE (DML) - 26 QUERIES
+-- --------------------------------------------------------------------
+
+-- 1. List of last names and first names of students.
+SELECT last_name, first_name FROM Student;
+
+-- 2. List of students who live in a chosen city (e.g., 'Algiers').
+SELECT last_name, first_name FROM Student WHERE city = 'Algiers';
+
+-- 3. List of students whose last name starts with 'A'.
+SELECT last_name, first_name FROM Student WHERE last_name LIKE 'A%';
+
+-- 4. Teachers whose second-to-last letter of the last name is 'E'.
+SELECT last_name, first_name FROM Instructor WHERE last_name LIKE '%E_';
+
+-- 5. Teachers sorted by department name, then last name, then first name.
+-- (Requires joining with Department table for the name)
+SELECT I.last_name, I.first_name, D.name 
+FROM Instructor I 
+JOIN Department D ON I.department_id = D.department_id 
+ORDER BY D.name ASC, I.last_name ASC, I.first_name ASC;
+
+-- 6. How many teachers have the grade 'Substitute' (spelled 'Substitute' in check constraint)?
+SELECT COUNT(*) FROM Instructor WHERE rank = 'Substitute';
+
+-- 7. Students who do not have a Fax number (NULL).
+SELECT last_name, first_name FROM Student WHERE fax IS NULL;
+
+-- 8. Titles of courses whose description includes 'Licence'.
+SELECT name FROM Course WHERE description LIKE '%Licence%';
+
+-- 9. Cost of each course (assuming 1 hour = 3000 DA).
+-- Based on reserved hours in Reservation table.
+SELECT C.name, SUM(R.hours_number * 3000) as total_cost
+FROM Reservation R
+JOIN Course C ON R.course_id = C.course_id AND R.department_id = C.department_id
+GROUP BY C.name;
+
+-- 10. Courses whose cost is between 3000 and 5000 DA.
+SELECT C.name, SUM(R.hours_number * 3000) as total_cost
+FROM Reservation R
+JOIN Course C ON R.course_id = C.course_id AND R.department_id = C.department_id
+GROUP BY C.name
+HAVING SUM(R.hours_number * 3000) BETWEEN 3000 AND 5000;
+
+-- 11. Average capacity and maximum capacity of rooms.
+SELECT AVG(capacity) as avg_capacity, MAX(capacity) as max_capacity FROM Room;
+
+-- 12. Rooms whose capacity is less than the average capacity.
+SELECT * FROM Room WHERE capacity < (SELECT AVG(capacity) FROM Room);
+
+-- 13. Teachers belonging to departments 'SADS' or 'CCS' (Using IN).
+SELECT I.last_name, I.first_name 
+FROM Instructor I 
+JOIN Department D ON I.department_id = D.department_id
+WHERE D.name IN ('SADS', 'CCS');
+
+-- 14. Teachers belonging neither to 'SADS' nor 'CCS'.
+SELECT I.last_name, I.first_name 
+FROM Instructor I 
+JOIN Department D ON I.department_id = D.department_id
+WHERE D.name NOT IN ('SADS', 'CCS');
+
+-- 15. Sort students by city.
+SELECT * FROM Student ORDER BY city;
+
+-- 16. How many courses are associated with each department?
+SELECT D.name, COUNT(C.course_id) 
+FROM Department D 
+LEFT JOIN Course C ON D.department_id = C.department_id
+GROUP BY D.name;
+
+-- 17. Departments where number of courses >= 3.
+SELECT D.name, COUNT(C.course_id) 
+FROM Department D 
+LEFT JOIN Course C ON D.department_id = C.department_id
+GROUP BY D.name
+HAVING COUNT(C.course_id) >= 3;
+
+-- 18. Teachers with at least two reservations (Using EXISTS).
+SELECT last_name, first_name 
+FROM Instructor I
+WHERE EXISTS (
+    SELECT 1 FROM Reservation R 
+    WHERE R.instructor_id = I.instructor_id 
+    GROUP BY R.instructor_id 
+    HAVING COUNT(*) >= 2
+);
+
+-- 19. Teachers with the most reservations (Using View & ALL).
+-- Assumes view 'instructor_reservation_count' exists from Section 2.5.2
+SELECT first_name, last_name 
+FROM instructor_reservation_count
+WHERE total_reservations >= ALL (SELECT total_reservations FROM instructor_reservation_count);
+
+-- 20. Teachers who do not have any reservations.
+SELECT last_name, first_name 
+FROM Instructor 
+WHERE instructor_id NOT IN (SELECT DISTINCT instructor_id FROM Reservation);
+
+-- 21. Rooms reserved on all dates stored in the database.
+-- (Finding rooms where there is no date in the database that they missed)
+SELECT building, roomno 
+FROM Room R
+WHERE NOT EXISTS (
+    SELECT DISTINCT reserv_date FROM Reservation -- All dates
+    EXCEPT
+    SELECT reserv_date FROM Reservation RES WHERE RES.building = R.building AND RES.roomno = R.roomno
+);
+
+-- 22. Dates on which all rooms are reserved.
+SELECT DISTINCT reserv_date 
+FROM Reservation R1
+WHERE NOT EXISTS (
+    SELECT building, roomno FROM Room -- All rooms
+    EXCEPT
+    SELECT building, roomno FROM Reservation R2 WHERE R2.reserv_date = R1.reserv_date
+);
+
+-- 23. 5 Examples including UPDATE clause.
+UPDATE Student SET city = 'Oran' WHERE student_id = 1;
+UPDATE Room SET capacity = capacity + 5 WHERE building = 'B';
+UPDATE Instructor SET rank = 'PROF' WHERE last_name = 'BenAbbes';
+UPDATE Course SET description = 'Updated Description' WHERE course_id = 1;
+UPDATE Reservation SET hours_number = 2 WHERE reservation_id = 1;
+
+-- 24. 5 Examples of Aggregation.
+SELECT COUNT(*) FROM Student;
+SELECT building, SUM(capacity) FROM Room GROUP BY building;
+SELECT department_id, COUNT(*) FROM Instructor GROUP BY department_id;
+SELECT MAX(hours_number) FROM Reservation;
+SELECT AVG(hours_number) FROM Reservation;
+
+-- 25. 5 Examples of Set Operations.
+-- Union
+SELECT city FROM Student UNION SELECT 'Paris';
+-- Intersect (Students living in same city as a teacher address - hypothetical)
+SELECT city FROM Student INTERSECT SELECT city FROM Student WHERE student_id = 2;
+-- Except
+SELECT student_id FROM Student EXCEPT SELECT student_id FROM Enrollment;
+-- Union All
+SELECT name FROM Department UNION ALL SELECT name FROM Department;
+-- Intersect with specific IDs
+SELECT course_id FROM Course INTERSECT SELECT course_id FROM Reservation;
+
+-- 26. 5 Examples of Querying inside FROM clause.
+SELECT * FROM (SELECT last_name, city FROM Student) AS sub;
+SELECT max_cap FROM (SELECT MAX(capacity) as max_cap FROM Room) AS sub;
+SELECT avg_hours FROM (SELECT AVG(hours_number) as avg_hours FROM Reservation) AS sub;
+SELECT * FROM (SELECT name FROM Department WHERE department_id = 1) AS sub;
+SELECT count_id FROM (SELECT COUNT(*) as count_id FROM Instructor) AS sub;
+
+-- --------------------------------------------------------------------
+-- SECTION 4.2: TRANSACTIONS (REQUIRED WORK)
+-- --------------------------------------------------------------------
+
+-- 1. Transaction Simple 1: Insert a new Department and a Course for it.
+BEGIN;
+    INSERT INTO Department (department_id, name) VALUES (20, 'Physics');
+    INSERT INTO Course (course_id, department_id, name, description) VALUES (101, 20, 'Mechanics', 'Intro to Mechanics');
+COMMIT;
+
+-- 2. Transaction Simple 2: Update room capacity and log it (conceptual).
+BEGIN;
+    UPDATE Room SET capacity = 60 WHERE roomno = '022' AND building = 'B';
+    -- Assuming a log table exists or just performing a second related update
+    UPDATE Room SET capacity = 55 WHERE roomno = '020' AND building = 'B';
+COMMIT;
+
+-- 3. Transaction with Savepoint 1: Attempt to insert duplicate student.
+BEGIN;
+    INSERT INTO Student (student_id, last_name, first_name, dob) VALUES (99, 'Test', 'User', '2000-01-01');
+    SAVEPOINT sp_student_inserted;
+    
+    -- Attempt an invalid operation (e.g., duplicate ID) or conditional logic
+    -- Simulating a rollback scenario
+    ROLLBACK TO sp_student_inserted;
+    
+    -- The first insert is preserved
+COMMIT;
+
+-- 4. Transaction with Savepoint 2: Reservation attempt.
+BEGIN;
+    INSERT INTO Reservation (reservation_id, building, roomno, course_id, department_id, instructor_id, hours_number)
+    VALUES (100, 'B', '022', 1, 1, 1, 2);
+    
+    SAVEPOINT reservation_made;
+    
+    -- Realize a conflict exists (simulated)
+    -- ROLLBACK TO reservation_made; (If we wanted to undo)
+    -- RELEASE SAVEPOINT reservation_made; (If we keep it)
+    
+    RELEASE SAVEPOINT reservation_made;
+COMMIT;
 
 \unrestrict Jsh6Kd5najeGPH5ZcRZneurxSejUJAGnaDz80R0oLFGGJ1rv9ux25UieELeCPGW
 
