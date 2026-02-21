@@ -1,6 +1,6 @@
-# University Management System (national high school of cyber security 
+# University Management System (national high school of cyber security):
 
-A comprehensive full-stack database project designed by "rabah haddadi and mohamed abbaci "  to manage university operations. This system integrates a robust (PostgreSQL) backend with a user-friendly **Python (Tkinter)** graphical interface to handle student data, academic courses, grading, attendance, and administrative auditing.
+A comprehensive full-stack database project designed by "Haddadi Rabah" and " Abbaci Mohamed Essadek "  to manage university operations. This system integrates a robust (PostgreSQL) backend with a user-friendly **Python (Tkinter)** graphical interface to handle student data, academic courses, grading, attendance, and administrative auditing.
 
  Features :
 
@@ -12,7 +12,7 @@ A comprehensive full-stack database project designed by "rabah haddadi and moham
     * Stored Functions: Custom PL/pgSQL functions for calculating failing grades, resit eligibility, and exclusion lists.
     * Views: Materialized and standard views for statistical reporting.
 
-  Application Layer (Python GUI)
+ 2) Application Layer (Python GUI)
 *  Modern Interface : Built with `ttkbootstrap` (Superhero theme) for a clean, dark-mode aesthetic.
 *  CRUD Modules: Full Create, Read, Update, Delete operations for all base entities (Students, Instructors, etc.).
 * Academic Management:
